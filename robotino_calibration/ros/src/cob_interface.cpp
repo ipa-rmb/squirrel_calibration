@@ -15,7 +15,7 @@
  *
  * Author: Marc Riedlinger, email:marc.riedlinger@ipa.fraunhofer.de
  *
- * Date of creation: February 2017
+ * Date of creation: September 2017
  *
  * +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  *
@@ -48,55 +48,54 @@
  *
  ****************************************************************/
 
-#ifndef RAW_CALIBRATION_H_
-#define RAW_CALIBRATION_H_
+#include <robotino_calibration/cob_interface.h>
 
-#include <robotino_calibration/calibration_interface.h>
-#include <sensor_msgs/JointState.h>
-#include <boost/thread/mutex.hpp>
-
-class RAWInterface : public CalibrationInterface
+CobInterface::CobInterface(ros::NodeHandle nh, bool bArmCalibration)
 {
-protected:
-	ros::Publisher arm_joint_controller_;
-	std::string arm_joint_controller_command_;
-	ros::Publisher camera_joint_controller_;
-	std::string camera_joint_controller_command_;
-	std::string base_controller_topic_name_;
-	ros::Publisher base_controller_;
+}
 
-	//double pan_joint_state_current_;
-	//double tilt_joint_state_current_;
-	std::vector<double> camera_state_current_;
-	boost::mutex pan_tilt_joint_state_data_mutex_;	// secures read operations on pan tilt joint state data
-	std::string joint_state_topic_;
+CobInterface::~CobInterface()
+{
+}
 
-	std::string camera_state_command_;
-	ros::Subscriber camera_state_;
+void CobInterface::assignNewRobotVelocity(geometry_msgs::Twist newVelocity)
+{
 
-	std::string arm_state_command_;
-	ros::Subscriber arm_state_;
-	sensor_msgs::JointState* arm_state_current_;
-	boost::mutex arm_state_data_mutex_;	// secures read operations on pan tilt joint state data
+}
+
+void CobInterface::assignNewCameraAngles(std_msgs::Float64MultiArray newAngles)
+{
+
+}
+
+std::vector<double>* CobInterface::getCurrentCameraState()
+{
+	return 0;
+}
+
+void CobInterface::cameraStateCallback(const sensor_msgs::JointState::ConstPtr& msg)
+{
+
+}
+
+void CobInterface::armStateCallback(const sensor_msgs::JointState::ConstPtr& msg)
+{
+
+}
+
+void CobInterface::assignNewArmJoints(std_msgs::Float64MultiArray newJointConfig)
+{
+
+}
+
+std::vector<double>* CobInterface::getCurrentArmState()
+{
+	return 0;
+}
 
 
-public:
-	RAWInterface(ros::NodeHandle nh, bool bArmCalibration);
-	~RAWInterface();
-
-	// camera calibration interface
-	void assignNewRobotVelocity(geometry_msgs::Twist newVelocity);
-	void assignNewCameraAngles(std_msgs::Float64MultiArray newAngles);
-	std::vector<double>* getCurrentCameraState();
-
-	// callbacks
-	void cameraStateCallback(const sensor_msgs::JointState::ConstPtr& msg);
-	void armStateCallback(const sensor_msgs::JointState::ConstPtr& msg);
-
-	// arm calibration interface
-	void assignNewArmJoints(std_msgs::Float64MultiArray newJointConfig);
-	std::vector<double>* getCurrentArmState();
-};
 
 
-#endif /* RAW_CALIBRATION_H_ */
+
+
+

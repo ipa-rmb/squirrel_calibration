@@ -55,10 +55,15 @@
 #include <robotino_calibration/calibration_interface.h>
 #include <robotino_calibration/robotino_interface.h>
 #include <robotino_calibration/raw_interface.h>
+#include <robotino_calibration/cob_interface.h>
 
 // Robot types
 #define Robotino	0
 #define RobAtWork	1
+#define CareOBot	2
+
+
+//ToDo: Generalize robot_configuration as well, so that it only uses PositionConfiguration and AngleConfiguration -> more flexible
 
 CalibrationInterface::CalibrationInterface()
 {
@@ -73,7 +78,7 @@ CalibrationInterface::~CalibrationInterface()
 {
 }
 
-// You can add more interfaces for further robots in here.
+// You can add further interfaces for other robots in here.
 CalibrationInterface* CalibrationInterface::createInterfaceByID(int ID, ros::NodeHandle nh, bool bArmCalibration)
 {
 	switch(ID)
@@ -83,6 +88,9 @@ CalibrationInterface* CalibrationInterface::createInterfaceByID(int ID, ros::Nod
 				break;
 		case RobAtWork:
 				return (new RAWInterface(nh, bArmCalibration));
+				break;
+		case CareOBot:
+				return (new CobInterface(nh, bArmCalibration));
 				break;
 		default:
 				return 0;

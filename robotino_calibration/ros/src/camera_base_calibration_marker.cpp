@@ -52,7 +52,9 @@
 #include <robotino_calibration/camera_base_calibration_marker.h>
 #include <robotino_calibration/transformation_utilities.h>
 
-#include <std_msgs/Float64.h>
+//#include <std_msgs/Float64.h>
+#include <std_msgs/Float64MultiArray.h>
+#include <geometry_msgs/Twist.h>
 
 #include <pcl/point_types.h>
 #include <pcl/registration/icp.h>
@@ -75,20 +77,8 @@ CameraBaseCalibrationMarker::CameraBaseCalibrationMarker(ros::NodeHandle nh) :
 	std::cout << "camera_frame: " << camera_frame_ << std::endl;
 	node_handle_.param<std::string>("camera_optical_frame", camera_optical_frame_, "kinect_rgb_optical_frame");
 	std::cout << "camera_optical_frame: " << camera_optical_frame_ << std::endl;
-	//node_handle_.param<std::string>("pan_controller_command", pan_controller_command_, "/pan_controller/command");
-	//std::cout << "pan_controller_command: " << pan_controller_command_ << std::endl;
-	//node_handle_.param<std::string>("tilt_controller_command", tilt_controller_command_, "/tilt_controller/command");
-	//std::cout << "tilt_controller_command: " << tilt_controller_command_ << std::endl;
-	//node_handle_.param<std::string>("pan_joint_state_topic", pan_joint_state_topic_, "/pan_controller/state");
-	//std::cout << "pan_joint_state_topic: " << pan_joint_state_topic_ << std::endl;
-	//node_handle_.param<std::string>("tilt_joint_state_topic", tilt_joint_state_topic_, "/tilt_controller/state");
-	//std::cout << "tilt_joint_state_topic: " << tilt_joint_state_topic_ << std::endl;
-	node_handle_.param<std::string>("base_controller_topic_name", base_controller_topic_name_, "/cmd_vel");
-	std::cout << "base_controller_topic_name: " << base_controller_topic_name_ << std::endl;
-
-	// deprecated
-	//node_handle_.param<std::string>("joint_state_topic", joint_state_topic_, "/pan_tilt_controller/joint_states");
-	//std::cout << "joint_state_topic: " << joint_state_topic_ << std::endl;
+	node_handle_.param("optimization_iterations", optimization_iterations_, 100);
+	std::cout << "optimization_iterations: " << optimization_iterations_ << std::endl;
 
 	// initial parameters
 	T_base_to_torso_lower_ = transform_utilities::makeTransform(transform_utilities::rotationMatrixFromYPR(0.0, 0.0, 0.0), cv::Mat(cv::Vec3d(0.25, 0, 0.5)));
@@ -167,7 +157,7 @@ CameraBaseCalibrationMarker::CameraBaseCalibrationMarker(ros::NodeHandle nh) :
 	// topics
 	//tilt_controller_ = node_handle_.advertise<std_msgs::Float64>(tilt_controller_command_, 1, false);
 	//pan_controller_ = node_handle_.advertise<std_msgs::Float64>(pan_controller_command_, 1, false);
-	base_controller_ = node_handle_.advertise<geometry_msgs::Twist>(base_controller_topic_name_, 1, false);
+	//base_controller_ = node_handle_.advertise<geometry_msgs::Twist>(base_controller_topic_name_, 1, false);
 
 	std::cout << "CameraBaseCalibrationMarker: init done." << std::endl;
 }
@@ -193,7 +183,7 @@ CameraBaseCalibrationMarker::~CameraBaseCalibrationMarker()
 	*tilt_joint_state_current_ = msg->position[1];
 }*/
 
-// new controller. moved to calibreation interface
+// new controller. moved to calibration interface
 /*void CameraBaseCalibrationMarker::panJointStateCallback(const dynamixel_msgs::JointState::ConstPtr& msg)
 {
 	boost::mutex::scoped_lock lock(pan_tilt_joint_state_data_mutex_);
@@ -216,20 +206,20 @@ bool CameraBaseCalibrationMarker::moveRobot(const calibration_utilities::RobotCo
 	//Avoid that robot moves, when there is an error with detecting the wall!
 
 	// move pan-tilt unit
-	std_msgs::Float64 msg;
-	msg.data = robot_configuration.pan_angle_;
-	calibration_interface_->assignNewCamaraPanAngle(msg);
-	//pan_controller_.publish(msg);
-	msg.data = robot_configuration.tilt_angle_;
-	//tilt_controller_.publish(msg);
-	calibration_interface_->assignNewCamaraTiltAngle(msg);
+	std_msgs::Float64MultiArray angles;
 	
+	angles.data.resize(2);
+	angles.data[0] = robot_configuration.pan_angle_;
+	angles.data[1] = robot_configuration.tilt_angle_;
+
+	calibration_interface_->assignNewCameraAngles(angles);
+
 	// do not move if close to goal
 	double error_phi = 10;
 	double error_x = 10;
 	double error_y = 10;
 	cv::Mat T;
-	if (!transform_utilities::getTransform(transform_listener_, "landmark_reference_nav", base_frame_, T))
+	if (!transform_utilities::getTransform(transform_listener_, child_frame_name_, base_frame_, T))
 		return false;
 	cv::Vec3d ypr = transform_utilities::YPRFromRotationMatrix(T);
 	double robot_yaw = ypr.val[0];
@@ -248,10 +238,10 @@ bool CameraBaseCalibrationMarker::moveRobot(const calibration_utilities::RobotCo
 		// control robot angle
 		while(true)
 		{
-			if (!transform_utilities::getTransform(transform_listener_, "landmark_reference_nav", base_frame_, T))
+			if (!transform_utilities::getTransform(transform_listener_, child_frame_name_, base_frame_, T))
 				return false;
 			cv::Vec3d ypr = transform_utilities::YPRFromRotationMatrix(T);
-				double robot_yaw = ypr.val[0];
+			double robot_yaw = ypr.val[0];
 			geometry_msgs::Twist tw;
 			error_phi = robot_configuration.pose_phi_ - robot_yaw;
 			while (error_phi < -CV_PI*0.5)
@@ -269,7 +259,7 @@ bool CameraBaseCalibrationMarker::moveRobot(const calibration_utilities::RobotCo
 		// control position
 		while(true)
 		{
-			if (!transform_utilities::getTransform(transform_listener_, "landmark_reference_nav", base_frame_, T))
+			if (!transform_utilities::getTransform(transform_listener_, child_frame_name_, base_frame_, T))
 				return false;
 			geometry_msgs::Twist tw;
 			error_x = robot_configuration.pose_x_ - T.at<double>(0,3);
@@ -280,14 +270,15 @@ bool CameraBaseCalibrationMarker::moveRobot(const calibration_utilities::RobotCo
 //			std::cout << "error_y: " << error_y << std::endl;
 			tw.linear.x = std::min(0.05, k_base*error_x);
 			tw.linear.y = std::min(0.05, k_base*error_y);
-			base_controller_.publish(tw);
+			//base_controller_.publish(tw);
+			calibration_interface_->assignNewRobotVelocity(tw);
 			ros::Rate(20).sleep();
 		}
 
 		// control robot angle
 		while (true)
 		{
-			if (!transform_utilities::getTransform(transform_listener_, "landmark_reference_nav", base_frame_, T))
+			if (!transform_utilities::getTransform(transform_listener_, child_frame_name_, base_frame_, T))
 				return false;
 			cv::Vec3d ypr = transform_utilities::YPRFromRotationMatrix(T);
 				double robot_yaw = ypr.val[0];
@@ -300,7 +291,8 @@ bool CameraBaseCalibrationMarker::moveRobot(const calibration_utilities::RobotCo
 			if (fabs(error_phi) < 0.02 || !ros::ok())
 				break;
 			tw.angular.z = std::min(0.05, k_phi*error_phi);
-			base_controller_.publish(tw);
+			//base_controller_.publish(tw);
+			calibration_interface_->assignNewRobotVelocity(tw);
 			ros::Rate(20).sleep();
 		}
 
@@ -309,20 +301,27 @@ bool CameraBaseCalibrationMarker::moveRobot(const calibration_utilities::RobotCo
 		tw.linear.x = 0;
 		tw.linear.y = 0;
 		tw.angular.z = 0;
-		base_controller_.publish(tw);
+		//base_controller_.publish(tw);
+		calibration_interface_->assignNewRobotVelocity(tw);
 	}
 	
 	// wait for pan tilt to arrive at goal position
-	double pan_joint_state_current = calibration_interface_->getCurrentCameraPanAngle();
-	double tilt_joint_state_current = calibration_interface_->getCurrentCameraTiltAngle();
-	if (pan_joint_state_current!=0 && tilt_joint_state_current!=0)
+	if ( (*calibration_interface_->getCurrentCameraState()).size() > 0 )//calibration_interface_->getCurrentCameraPanAngle()!=0 && calibration_interface_->getCurrentCameraTiltAngle()!=0)
 	{
 		Timer timeout;
 		while (timeout.getElapsedTimeInSec()<5.0)
 		{
 			boost::mutex::scoped_lock(pan_tilt_joint_state_data_mutex_);
-			if (fabs(pan_joint_state_current-robot_configuration.pan_angle_)<0.01 && fabs(tilt_joint_state_current-robot_configuration.tilt_angle_)<0.01)
+			std::vector<double> cur_state = *calibration_interface_->getCurrentCameraState();
+			std::vector<double> difference(cur_state.size());
+			for (int i = 0; i<cur_state.size(); ++i)
+				difference[i] = angles.data[i]-cur_state[i];
+
+			double length = std::sqrt(std::inner_product(difference.begin(), difference.end(), difference.begin(), 0.0)); //Length of difference vector in joint space
+
+			if ( length < 0.01 ) //Close enough to goal configuration (~0.5° deviation allowed)
 				break;
+
 			ros::spinOnce();
 		}
 	}

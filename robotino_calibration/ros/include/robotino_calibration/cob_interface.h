@@ -15,7 +15,7 @@
  *
  * Author: Marc Riedlinger, email:marc.riedlinger@ipa.fraunhofer.de
  *
- * Date of creation: February 2017
+ * Date of creation: September 2017
  *
  * +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  *
@@ -48,41 +48,20 @@
  *
  ****************************************************************/
 
-#ifndef RAW_CALIBRATION_H_
-#define RAW_CALIBRATION_H_
+#ifndef COB_INTERFACE_H_
+#define COB_INTERFACE_H_
 
 #include <robotino_calibration/calibration_interface.h>
 #include <sensor_msgs/JointState.h>
 #include <boost/thread/mutex.hpp>
 
-class RAWInterface : public CalibrationInterface
+class CobInterface : public CalibrationInterface
 {
 protected:
-	ros::Publisher arm_joint_controller_;
-	std::string arm_joint_controller_command_;
-	ros::Publisher camera_joint_controller_;
-	std::string camera_joint_controller_command_;
-	std::string base_controller_topic_name_;
-	ros::Publisher base_controller_;
-
-	//double pan_joint_state_current_;
-	//double tilt_joint_state_current_;
-	std::vector<double> camera_state_current_;
-	boost::mutex pan_tilt_joint_state_data_mutex_;	// secures read operations on pan tilt joint state data
-	std::string joint_state_topic_;
-
-	std::string camera_state_command_;
-	ros::Subscriber camera_state_;
-
-	std::string arm_state_command_;
-	ros::Subscriber arm_state_;
-	sensor_msgs::JointState* arm_state_current_;
-	boost::mutex arm_state_data_mutex_;	// secures read operations on pan tilt joint state data
-
 
 public:
-	RAWInterface(ros::NodeHandle nh, bool bArmCalibration);
-	~RAWInterface();
+	CobInterface(ros::NodeHandle nh, bool bArmCalibration);
+	~CobInterface();
 
 	// camera calibration interface
 	void assignNewRobotVelocity(geometry_msgs::Twist newVelocity);
@@ -98,5 +77,4 @@ public:
 	std::vector<double>* getCurrentArmState();
 };
 
-
-#endif /* RAW_CALIBRATION_H_ */
+#endif /* COB_INTERFACE_H_ */

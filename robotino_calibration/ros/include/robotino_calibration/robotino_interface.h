@@ -53,6 +53,7 @@
 
 #include <robotino_calibration/calibration_interface.h>
 #include <dynamixel_msgs/JointState.h>
+#include <sensor_msgs/JointState.h>
 #include <boost/thread/mutex.hpp>
 
 class RobotinoInterface : public CalibrationInterface
@@ -66,12 +67,21 @@ protected:
 	ros::Publisher pan_controller_;
 	std::string tilt_controller_command_;
 	std::string pan_controller_command_;
+	std::string base_controller_topic_name_;
+	ros::Publisher base_controller_;
 
-	double pan_joint_state_current_;
-	double tilt_joint_state_current_;
-	boost::mutex pan_tilt_joint_state_data_mutex_;	// secures read operations on pan tilt joint state data
+	//double pan_joint_state_current_;
+	//double tilt_joint_state_current_;
+	std::vector<double> camera_state_current_;
+	boost::mutex pan_joint_state_data_mutex_;	// secures read operations on pan joint state data
+	boost::mutex tilt_joint_state_data_mutex_;	// secures read operations on tilt joint state data
 	std::string tilt_joint_state_topic_;
 	std::string pan_joint_state_topic_;
+
+	std::string arm_state_command_;
+	ros::Subscriber arm_state_;
+	sensor_msgs::JointState* arm_state_current_;
+	boost::mutex arm_state_data_mutex_;	// secures read operations on pan tilt joint state data
 
 public:
 	RobotinoInterface(ros::NodeHandle nh, bool bArmCalibration);
@@ -79,17 +89,17 @@ public:
 
 	// camera calibration interface
 	void assignNewRobotVelocity(geometry_msgs::Twist newVelocity);
-	void assignNewCamaraPanAngle(std_msgs::Float64 newPan);
-	void assignNewCamaraTiltAngle(std_msgs::Float64 newTilt);
-	double getCurrentCameraTiltAngle();
-	double getCurrentCameraPanAngle();
+	void assignNewCameraAngles(std_msgs::Float64MultiArray newAngles);
+	std::vector<double>* getCurrentCameraState();
 
 	// callbacks
 	void panJointStateCallback(const dynamixel_msgs::JointState::ConstPtr& msg);
 	void tiltJointStateCallback(const dynamixel_msgs::JointState::ConstPtr& msg);
+	void armStateCallback(const sensor_msgs::JointState::ConstPtr& msg);
 
 	// arm calibration interface
 	void assignNewArmJoints(std_msgs::Float64MultiArray newJointConfig);
+	std::vector<double>* getCurrentArmState();
 };
 
 
