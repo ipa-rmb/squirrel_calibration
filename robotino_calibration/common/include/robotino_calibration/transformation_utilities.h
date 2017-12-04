@@ -64,6 +64,7 @@ namespace transform_utilities
 	// 1. rotation = yaw around z
 	// 2. rotation = pitch around y'
 	// 3. rotation = roll around x''
+	// todo: fix and reactivate
 	//cv::Mat rotationMatrixFromYPR(double yaw, double pitch, double roll);
 
 	// computes yaw, pitch, roll angles from rotation matrix rot (can also be a 4x4 transformation matrix with rotation matrix at upper left corner)

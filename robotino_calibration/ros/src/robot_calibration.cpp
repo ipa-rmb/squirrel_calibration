@@ -72,6 +72,7 @@ RobotCalibration::RobotCalibration(ros::NodeHandle nh, bool do_arm_calibration) 
 	node_handle_.param("calibration_ID", calibration_ID_, 0);
 	std::cout << "calibration_ID: " << calibration_ID_ << std::endl;
 
+/*
 	// load gaps including its initial values
 	std::vector<std::string> uncertainties_list;
 	node_handle_.getParam("uncertainties_list", uncertainties_list);
@@ -118,7 +119,7 @@ RobotCalibration::RobotCalibration(ros::NodeHandle nh, bool do_arm_calibration) 
 			std::cout << "Initial transform: " << transforms_to_calibrate_[calibration_order_[i]].current_trafo_ << std::endl;
 		}
 	}
-
+*/
 
 
 	/*std::vector<std::string> uncertain_chain;

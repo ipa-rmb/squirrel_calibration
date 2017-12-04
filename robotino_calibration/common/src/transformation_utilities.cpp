@@ -68,6 +68,7 @@ namespace transform_utilities
 	// 3. rotation = roll around x''
 
 
+	// todo: check if this is now correct and reactivate
 	/*cv::Mat rotationMatrixFromYPR(double yaw, double pitch, double roll)
 	{
 		double sy = sin(yaw);
@@ -95,7 +96,7 @@ namespace transform_utilities
 		return cv::Vec3d(euler_angles(2), euler_angles(1), euler_angles(0));
 	}*/
 
-
+	// todo: delete, this should be wrong
 	/*cv::Mat rotationMatrixFromYPR(double yaw, double pitch, double roll)
 	{
 		double sy = sin(yaw);
