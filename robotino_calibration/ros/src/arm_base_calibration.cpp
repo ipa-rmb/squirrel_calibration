@@ -111,13 +111,22 @@ ArmBaseCalibration::ArmBaseCalibration(ros::NodeHandle nh) :
 	std::cout << "max_angle_deviation: " << max_angle_deviation_ << std::endl;
 
 	// initial parameters
-	temp.clear();
+	bool success = transform_utilities::getTransform(transform_listener_, base_frame_, armbase_frame_, T_base_to_armbase_);
+	if ( success == false )
+	{
+		ROS_FATAL("Could not retrieve transform from %s to %s from TF!",base_frame_.c_str(),armbase_frame_.c_str());
+		throw std::exception();
+	}
+	else
+		std::cout << "T_base_to_armbase_initial:\n" << T_base_to_armbase_ << std::endl;
+
+	/*temp.clear();
 	T_base_to_armbase_ = transform_utilities::makeTransform(transform_utilities::rotationMatrixFromYPR(0.0, 0.0, 0.0), cv::Mat(cv::Vec3d(0.0, 0.0, 0.0)));
 	node_handle_.getParam("T_base_to_armbase_initial", temp);
 	if ( temp.size()==6 )
 		T_base_to_armbase_ = transform_utilities::makeTransform(transform_utilities::rotationMatrixFromYPR(temp[3], temp[4], temp[5]), cv::Mat(cv::Vec3d(temp[0], temp[1], temp[2])));
 	std::cout << "T_base_to_arm_initial:\n" << T_base_to_armbase_ << std::endl;
-	temp.clear();
+	temp.clear();*/
 
 	// read out user-defined end effector configurations
 	temp.clear();
@@ -442,6 +451,11 @@ bool ArmBaseCalibration::acquireCalibrationImages(const cv::Size pattern_size, c
 	const int number_images_to_capture = (int)arm_configurations_.size();
 	for (int image_counter = 0; image_counter < number_images_to_capture; ++image_counter)
 	{
+		if ( !ros::ok() )
+			return false;
+
+		std::cout << "Configuration " << (image_counter+1) << "/" << number_images_to_capture << std::endl;
+
 		if (!load_images)
 		{
 			moveCamera(camera_configurations_[image_counter]);
@@ -679,11 +693,18 @@ void ArmBaseCalibration::displayAndSaveCalibrationResult(const cv::Mat& T_base_t
 			  << "  <property name=\"arm_base_yaw\" value=\"" << ypr.val[0] << "\"/>\n\n";
 	std::cout << output.str();
 
-	std::string path_file = calibration_storage_path_ + "arm_calibration_urdf.txt";
-	std::fstream file_output;
-	file_output.open(path_file.c_str(), std::ios::out);
-	if (file_output.is_open())
-		file_output << output.str();
-	file_output.close();
+	if ( ros::ok() )
+	{
+		std::string path_file = calibration_storage_path_ + "arm_calibration_urdf.txt";
+		std::fstream file_output;
+		file_output.open(path_file.c_str(), std::ios::out);
+		if (file_output.is_open())
+			file_output << output.str();
+		file_output.close();
+	}
+	else
+	{
+		ROS_INFO("Skipping to save calibration result.");
+	}
 }
 

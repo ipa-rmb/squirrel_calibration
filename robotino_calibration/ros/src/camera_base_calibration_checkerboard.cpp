@@ -164,7 +164,10 @@ bool CameraBaseCalibrationCheckerboard::calibrateCameraToBase(const bool load_im
 	}
 
 	// display calibration parameters
-	displayAndSaveCalibrationResult(T_base_to_torso_lower_, T_torso_upper_to_camera_);
+	std::vector<cv::Mat> calibrated_Transforms;
+	calibrated_Transforms.push_back(T_base_to_torso_lower_);
+	calibrated_Transforms.push_back(T_torso_upper_to_camera_);
+	displayAndSaveCalibrationResult(calibrated_Transforms);
 
 	// save calibration
 	saveCalibration();
@@ -184,6 +187,8 @@ bool CameraBaseCalibrationCheckerboard::acquireCalibrationImages(const std::vect
 	{
 		if ( !ros::ok() )
 			return false;
+
+		std::cout << "Configuration " << (image_counter+1) << "/" << number_images_to_capture << std::endl;
 
 		if (!load_images)
 			moveRobot(robot_configurations[image_counter]);

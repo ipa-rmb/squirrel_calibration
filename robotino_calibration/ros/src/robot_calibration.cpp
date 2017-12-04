@@ -54,6 +54,7 @@
 #include <boost/filesystem.hpp>
 #include <exception>
 #include <robotino_calibration/timer.h>
+#include <robotino_calibration/transformation_utilities.h>
 
 //Exception
 #include <tf/exceptions.h>
@@ -71,42 +72,92 @@ RobotCalibration::RobotCalibration(ros::NodeHandle nh, bool do_arm_calibration) 
 	node_handle_.param("calibration_ID", calibration_ID_, 0);
 	std::cout << "calibration_ID: " << calibration_ID_ << std::endl;
 
+	// load gaps including its initial values
+	std::vector<std::string> uncertainties_list;
+	node_handle_.getParam("uncertainties_list", uncertainties_list);
+
+	if ( uncertainties_list.size() % 2 != 0 )
+		ROS_WARN("Size of uncertainsties_list is not a factor of two.");
+
+	for ( int i=0; i<uncertainties_list.size(); i+=2 )
+	{
+		CalibrationInfo tmp;
+		tmp.parent_ = uncertainties_list[i];
+		tmp.child_ = uncertainties_list[i+1];
+		tmp.trafo_until_next_gap_idx_ = -1;
+		bool success = transform_utilities::getTransform(transform_listener_, tmp.parent_, tmp.child_, tmp.current_trafo_);
+
+		if ( success == false )
+		{
+			ROS_FATAL("Could not retrieve transform from %s to %s from TF!", tmp.parent_.c_str(), tmp.child_.c_str());
+			throw std::exception();
+		}
+
+		transforms_to_calibrate_.push_back(tmp);
+	}
+
+	node_handle_.getParam("calibration_order", calibration_order_);
+	if ( calibration_order_.size() != transforms_to_calibrate_.size() )
+	{
+		ROS_FATAL("Size of calibration_order and gaps inside uncertainties_list do not match!");
+		throw std::exception();
+	}
+
+	std::cout << "calibration order:" << std::endl;
+	for ( int i=0; i<calibration_order_.size(); ++i )
+	{
+		if ( calibration_order_[i] < 1 || calibration_order_[i] > transforms_to_calibrate_.size() )
+		{
+			ROS_FATAL("Invalid index in calibration order %d", calibration_order_[i]);
+			throw std::exception();
+		}
+		else
+		{
+			calibration_order_[i] = calibration_order_[i]-1; // zero-indexed values from now on
+			std::cout << (i+1) << ". From " << transforms_to_calibrate_[calibration_order_[i]].parent_ << " to " << transforms_to_calibrate_[calibration_order_[i]].child_ << std::endl;
+			std::cout << "Initial transform: " << transforms_to_calibrate_[calibration_order_[i]].current_trafo_ << std::endl;
+		}
+	}
+
+
+
+	/*std::vector<std::string> uncertain_chain;
+	node_handle_.getParam("uncertain_chain", uncertain_chain);
+	std::map<std::string,std::string> calib_trafos;
+	node_handle_.getParam("trafos_to_calibrate", calib_trafos);
+
+	std::map<std::string, std::string>::iterator it;
+	for ( it=calib_trafos.begin(); it != calib_trafos.end(); it++ )
+	{
+		// Find parent frame
+		for ( int i=0; i<uncertain_chain.size(); ++i )
+		{
+			if ( uncertain_chain[i] == it->first )
+			{
+				if ( i > 0 )
+				{
+					CalibrationInfo tmp;
+
+					tmp.parent_ = uncertain_chain[i-1];
+					tmp.child_ = uncertain_chain[i];
+					transform_utilities::stringToTransform(it->second, tmp.current_trafo_); // Assign initial trafo as first guess
+
+					transforms_to_calibrate_.push_back(tmp);
+				}
+				else
+					ROS_WARN("First frame in uncertain_chain can't be part of the trafos_to_calibrate list!");
+
+				break;
+			}
+		}
+	}*/
+
 	calibration_interface_ = CalibrationInterface::createInterfaceByID(calibration_ID_, node_handle_, do_arm_calibration);
 	createStorageFolder();
 
 	if (calibration_interface_ == 0) // Throw exception, as we need an calibration interface in order to function properly!
 	{
 		ROS_FATAL("Could not create a calibration interface for calibration_ID: %d", calibration_ID_);
-		throw std::exception();
-	}
-
-	// Check whether relative_localization has initialized the reference frame yet.
-	// Do not let the robot start driving when the reference frame has not been set up properly! Bad things could happen!
-	if (do_arm_calibration==false) //During arm calibration the robot does not drive and there is no child frame available.
-	{
-		node_handle_.param<std::string>("child_frame_name", child_frame_name_, "/landmark_reference_nav");
-		std::cout << "child_frame_name: " << child_frame_name_ << std::endl;
-
-		Timer timeout;
-		while ( timeout.getElapsedTimeInSec() < 10.f )
-		{
-			try
-			{
-				bool result = transform_listener_.waitForTransform(base_frame_, child_frame_name_, ros::Time::now(), ros::Duration(1.f));
-				if (result) // Everything is fine, return
-					return;
-			}
-			catch (tf::TransformException& ex)
-			{
-				ROS_WARN("%s", ex.what());
-				// Continue with loop and try again
-			}
-
-			ros::Duration(0.1f).sleep(); //Wait for child_frame transform to register properly
-		}
-
-		//Failed to set up child frame, exit
-		ROS_FATAL("RobotCalibration::RobotCalibration: Reference frame has not been set up for 10 seconds.");
 		throw std::exception();
 	}
 }

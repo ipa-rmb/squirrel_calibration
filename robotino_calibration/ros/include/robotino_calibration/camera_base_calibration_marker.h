@@ -68,8 +68,8 @@
 #include <pcl/point_types.h>
 
 // opencv
-#include <opencv2/opencv.hpp>
-#include <cv_bridge/cv_bridge.h>
+//#include <opencv2/opencv.hpp>
+//#include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
 
 // Boost
@@ -79,6 +79,8 @@
 
 #include <robotino_calibration/timer.h>
 #include <robotino_calibration/robot_calibration.h>
+
+#define RefFrameHistorySize 10 // 10 entries used to build the average upon
 
 
 class CameraBaseCalibrationMarker : public RobotCalibration
@@ -103,6 +105,11 @@ protected:
 	// moves the robot to a desired location and adjusts the torso joints
 	bool moveRobot(const calibration_utilities::RobotConfiguration& robot_configuration);
 
+	// Turn off base movement
+	void turnOffBaseMotion();
+
+	bool isReferenceFrameValid(cv::Mat &T); // Returns wether reference frame is valid -> if so, it is save to move the robot base, otherwise stop!
+
 	void extrinsicCalibrationBaseToTorsoLower(std::vector< std::vector<cv::Point3f> >& pattern_points_3d,
 			std::vector<cv::Mat>& T_base_to_checkerboard_vector, std::vector<cv::Mat>& T_torso_lower_to_torso_upper_vector,
 			std::vector<cv::Mat>& T_camera_to_checkerboard_vector);
@@ -111,8 +118,13 @@ protected:
 			std::vector<cv::Mat>& T_base_to_marker_vector, std::vector<cv::Mat>& T_torso_lower_to_torso_upper_vector,
 			std::vector<cv::Mat>& T_camera_to_marker_vector);
 
+	void extrinsicCalibration(std::vector< std::vector<cv::Point3f> >& pattern_points_3d,
+			std::vector<cv::Mat>& T_base_to_marker_vector, std::vector< std::vector<cv::Mat> > T_between_gaps_vector,
+			std::vector<cv::Mat>& T_camera_to_marker_vector, int trafo_to_calibrate);
+
 	// displays the calibration result in the urdf file's format and also stores the screen output to a file
-	void displayAndSaveCalibrationResult(const cv::Mat& T_base_to_torso_lower_, const cv::Mat& T_torso_upper_to_camera_);
+	void displayAndSaveCalibrationResult(const std::vector<cv::Mat>& calibratedTransforms);//const cv::Mat& T_base_to_torso_lower_, const cv::Mat& T_torso_upper_to_camera_);
+	void displayAndSaveCalibrationResult();
 
 	std::string torso_lower_frame_;
 	std::string torso_upper_frame_;
@@ -123,6 +135,8 @@ protected:
 	cv::Mat T_torso_upper_to_camera_;		// transformation to estimate from torso_upper to camera
 
 	std::vector<calibration_utilities::RobotConfiguration> robot_configurations_;  // wished robot configurations used for calibration
+	double RefFrameHistory_[RefFrameHistorySize]; // History of base_frame to reference_frame squared lengths, used to get average squared length. Holds last <RefFrameHistorySize> measurements.
+	int RefHistoryIndex_; // Current index of history building
 };
 
 

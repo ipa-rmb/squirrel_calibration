@@ -99,6 +99,14 @@ RAWInterface::~RAWInterface()
 }
 
 
+// General functions
+// ToDo: Remove this function later on, because these names can be retrieved from the yaml file directly.
+void RAWInterface::getParameterNames(std::vector<std::string>& parameter_names)
+{
+	parameter_names.push_back("torso_0_link");
+	parameter_names.push_back("torso_knob_link");
+}
+
 // CAMERA CALIBRATION INTERFACE
 
 //Callbacks - User defined
@@ -133,10 +141,9 @@ void RAWInterface::assignNewCameraAngles(std_msgs::Float64MultiArray new_angles)
 	control_msgs::FollowJointTrajectoryGoal camGoal;
 
 	ac.waitForServer();
-
-	jointTraj.joint_names = {"torso_pan_joint", "torso_tilt_joint"};
+	jointTraj.joint_names = {"torso_bottom_joint", "torso_side_joint"};
 	jointTrajPoint.positions.insert(jointTrajPoint.positions.end(), new_angles.data.begin(), new_angles.data.end());
-	jointTrajPoint.time_from_start = ros::Duration(1);
+	jointTrajPoint.time_from_start = ros::Duration(2);
 	jointTrajPoint.velocities = {0,0}; //Initialize velocities to zero, does not work with empty list
 	jointTrajPoint.accelerations = {0,0};
 	jointTraj.points.push_back(jointTrajPoint);

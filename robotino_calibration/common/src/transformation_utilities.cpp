@@ -56,6 +56,9 @@
 //Exception
 #include <tf/exceptions.h>
 
+#include <string>
+#include <ros/ros.h>
+
 namespace transform_utilities
 {
 	// compute rotation matrix from yaw, pitch, roll
@@ -63,7 +66,37 @@ namespace transform_utilities
 	// 1. rotation = yaw around z
 	// 2. rotation = pitch around y'
 	// 3. rotation = roll around x''
-	cv::Mat rotationMatrixFromYPR(double yaw, double pitch, double roll)
+
+
+	/*cv::Mat rotationMatrixFromYPR(double yaw, double pitch, double roll)
+	{
+		double sy = sin(yaw);
+		double cy = cos(yaw);
+		double sp = sin(pitch);
+		double cp = cos(pitch);
+		double sr = sin(roll);
+		double cr = cos(roll);
+		cv::Mat rotation = (cv::Mat_<double>(3,3) <<
+				cp*cy,					-cp*sy,					sp,
+				cy*sp*sr + cr*sy,		cp*cr - sp*sr*sy,		-cp*sr,
+				sr*sy - cr*cy*sp,		cp*sr + cr*sp*sy,		cp*cr);
+
+		return rotation;
+	}
+
+	// computes yaw, pitch, roll angles from rotation matrix rot (can also be a 4x4 transformation matrix with rotation matrix at upper left corner)
+	cv::Vec3d YPRFromRotationMatrix(const cv::Mat& rot)
+	{
+		Eigen::Matrix3f rot_eigen;
+		for (int i=0; i<3; ++i)
+			for (int j=0; j<3; ++j)
+				rot_eigen(i,j) = rot.at<double>(i,j);
+		Eigen::Vector3f euler_angles = rot_eigen.eulerAngles(2,1,0);
+		return cv::Vec3d(euler_angles(2), euler_angles(1), euler_angles(0));
+	}*/
+
+
+	/*cv::Mat rotationMatrixFromYPR(double yaw, double pitch, double roll)
 	{
 		double sy = sin(yaw);
 		double cy = cos(yaw);
@@ -77,7 +110,7 @@ namespace transform_utilities
 				-sp,		cp*sr,					cp*cr);
 
 		return rotation;
-	}
+	}*/
 
 	// computes yaw, pitch, roll angles from rotation matrix rot (can also be a 4x4 transformation matrix with rotation matrix at upper left corner)
 	cv::Vec3d YPRFromRotationMatrix(const cv::Mat& rot)
@@ -99,6 +132,40 @@ namespace transform_utilities
 				0., 0., 0., 1);
 		return T;
 	}
+
+	// Takes a string like "1,1,1,1,1,1" and creates a 4x4 transformation matrix out of it.
+	/*bool stringToTransform(const std::string values, cv::Mat& trafo)
+	{
+		const std::string delimiter = ",";
+		size_t npos = 0, opos = 0;
+		std::vector<double> nums;
+
+		trafo.release();
+
+		while ( (npos = values.find(delimiter)) != std::string::npos )
+		{
+			double temp = std::stod(values.substr(opos, npos));
+			nums.push_back(temp);
+		}
+
+		if ( nums.size() == 6 )
+		{
+			trafo = makeTransform( rotationMatrixFromYPR(nums[3], nums[4], nums[5]), cv::Mat(cv::Vec3d(nums[0], nums[1], nums[2])));
+			return true;
+		}
+		else
+		{
+			ROS_WARN("String does not contain amount of values for a transformation (exactly 6 needed).");
+
+			trafo = ( cv::Mat_<double>(4,4) <<
+							0., 0., 0., 0.,
+							0., 0., 0., 0.,
+							0., 0., 0., 0.,
+							0., 0., 0., 0.);
+
+			return false;
+		}
+	}*/
 
 	// computes the transform from target_frame to source_frame (i.e. transform arrow is pointing from target_frame to source_frame)
 	bool getTransform(const tf::TransformListener& transform_listener, const std::string& target_frame, const std::string& source_frame, cv::Mat& T)
